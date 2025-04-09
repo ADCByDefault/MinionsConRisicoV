@@ -17,23 +17,23 @@ free_space: .word 0x0
     
     jal find_free_space
     li a0 65
-    jal link
+    jal add
     
     jal find_free_space
     li a0 66
-    jal link
+    jal add
     
     jal find_free_space
     li a0 67
-    jal link
+    jal add
     
     jal find_free_space
     li a0 68
-    jal link
+    jal add
     
     jal find_free_space
     li a0 69
-    jal link
+    jal add
     jal find_free_space
     #exit
     li a7 10
@@ -42,15 +42,15 @@ free_space: .word 0x0
     
 #add to tail
 #a0 byte to add
-link:
+add:
     #carico indirizzo puntato da free_space
     lw t1 free_space
     #if tail == null nessun nodo precedente 
     #quindi nessun nodo da far puntare al nuovo nodo
     lw t2 tail
-    beq zero t2 link_skip_tail_null
+    beq zero t2 add_skip_tail_null
     sw t1 1(t2)
-    link_skip_tail_null:
+    add_skip_tail_null:
     #tail = attuale indirizzo puntato da free_space
     la t2 tail
     sw t1 0(t2)
@@ -63,10 +63,18 @@ link:
     sw zero 1(t1)
     #se head == null allora head = nodo appena creato
     lw t3 head
-    bne zero t3 link_return
+    bne zero t3 add_return
     la t3 head
     sw t1 0(t3)
-    link_return:
+    add_return:
+    jr ra
+    
+#a1= puntatore a head
+print:
+    beq zero a1 print_return
+    lb t0 0(a1)
+    lw t1 1(a1)
+    print_return:
     jr ra
     
 #viene aggiornata la word free_space con puntatore alla
