@@ -15,16 +15,26 @@ free_space: .word 0x0
     addi t0 s1 4
     sw t0 0(s1)
     
+    jal find_free_space
     li a0 65
     jal link
+    
+    jal find_free_space
     li a0 66
     jal link
+    
+    jal find_free_space
     li a0 67
     jal link
+    
+    jal find_free_space
     li a0 68
     jal link
+    
+    jal find_free_space
     li a0 69
     jal link
+    jal find_free_space
     #exit
     li a7 10
     ecall
@@ -33,8 +43,7 @@ free_space: .word 0x0
 #add to tail
 #a0 byte to add
 link:
-    #carico indirizzo di e indirizzo puntato da free_space
-    la t0 free_space
+    #carico indirizzo puntato da free_space
     lw t1 free_space
     #if tail == null nessun nodo precedente 
     #quindi nessun nodo da far puntare al nuovo nodo
@@ -49,19 +58,32 @@ link:
     lw t3 length
     addi t3 t3 1
     sw t3 8(t2)
-    #salvo byte e incremento di 1 indirizzo puntato da free_space
+    #salvo byte e puntatore a null
     sb a0 0(t1)
-    addi t1 t1 1
-    #nuovo nodo punta a null e indirizzo puntato da free_space += 4
-    sw zero 0(t1)
-    addi t1 t1 4
-    #salvo nuovo indirizzo libero in free_space
-    sw t1 0(t0)
+    sw zero 1(t1)
     #se head == null allora head = nodo appena creato
     lw t3 head
     bne zero t3 link_return
     la t3 head
-    addi t1 t1 -5
     sw t1 0(t3)
     link_return:
     jr ra
+    
+#viene aggiornata la word free_space con puntatore alla
+#alla prima cella di prime 5 celle che hanno solo 0x0
+#a partire dal indirizzo di memoria di free_space
+#cercando a blocchi di 5, metodo presenta criticità.
+find_free_space:
+    la t0 free_space
+    mv t1 t0
+    find_free_space_loop:
+    lb t2 0(t1)
+    lw t3 1(t1)
+    addi t1 t1 5
+    bne zero t2 find_free_space_loop
+    bne zero t3 find_free_space_loop
+    addi t1 t1 -5
+    sw t1 0(t0)
+    jr ra
+    
+    
