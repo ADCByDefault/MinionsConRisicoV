@@ -4,6 +4,10 @@ input: .string "ADD(1)"
 tail: .word 0x0
 head: .word 0x0
 length: .word 0x0
+lunghezza_buffer1: .byte 0
+buffer1: .zero 100
+lunghezza_buffer2: .byte 0
+buffer2: .zero 100
 free_space: .word 0x0
 
 .text
@@ -15,53 +19,315 @@ free_space: .word 0x0
     addi t0 s1 4
     sw t0 0(s1)
     la sp sp
+    la s2 lunghezza_buffer1
+    la s3 lunghezza_buffer2
     
     jal find_free_space
     li a0 65
-    jal add
+    jal ADD
     jal find_free_space
     li a0 66
-    jal add
+    jal ADD
     jal find_free_space
     li a0 67
-    jal add
+    jal ADD
     jal find_free_space
     li a0 67
-    jal add
+    jal ADD
     jal find_free_space
     li a0 69
-    jal add
+    jal ADD
     jal find_free_space
     li a0 69
-    jal add
+    jal ADD
     jal find_free_space
     li a0 69
-    jal add
+    jal ADD
     jal find_free_space
     li a0 72
-    jal add
+    jal ADD
     jal find_free_space
  
     lw a1 0(s0)
-    jal print
+    jal PRINT
     
     li a0 65
-    jal del
+    jal DEL
     li a0 69
-    jal del
-    jal del
+    jal DEL
+    jal DEL
     
-    jal rev
+    jal REV
+    
+    jal find_free_space
+    li a0 76
+    jal ADD
+    jal find_free_space
+    jal ADD
+    jal find_free_space
+    jal ADD
+    jal find_free_space
+    jal ADD
+    jal find_free_space
+    jal ADD
+    jal find_free_space
+    jal ADD
+    jal find_free_space
+    
     jal new_line
     lw a1 0(s0)
-    jal print
+    jal PRINT
+    
+    jal DEL
+    
+    jal find_free_space
+    
+    jal new_line
+    lw a1 0(s0)
+    jal PRINT
+    
+    li a6 110
+    li a7 77
+    jal compare_chars
+    mv a1 a6
+    mv a2 a7
     #exit
     li a7 10
     ecall
     
+SORT:
+    #salvo ra
+    lw t0 0(sp)
+    sw ra 0(t0)
+    addi t0 t0 -4
+    sw t0 0(sp)
+    #to_array nel buffer 1
+    jal to_array
+    la a0 buffer1
+    li a1 0
+    lw a2 lunghezza_buffer1
+    addi a2 a2 -1
+    jal merge_sort
+    jal clear_buffer1
+    jal clear_buffer2
+    #recupero ra
+    lw t0 0(sp)
+    addi t0 t0 4
+    lw ra 0(t4)
+    sw t4 0(sp)
+    sort_return:
+    jr ra
+    
+# a6 char1, a7 char2 ritorna: a6 minore, a7 maggiore
+compare_chars:
+    #salvo ra in t6(non vinene usata da get_category)
+    mv t6 ra
+    #trovo categoria di a6 e metto risultato in t2
+    mv a5, a6
+    jal get_category
+    mv t1, a5
+    #trovo categoria di a7 e metto risultato in t3
+    mv a5, a7
+    jal get_category
+    mv t2, a5
+    #repristino ra
+    mv ra t6
+    #a6 categoria minore
+    blt t1, t2, compare_chars_return
+    #mv tp t1
+    #a7 categoria minore
+    bgt t1, t2, compare_chars_switch
+    #se hanno la stessa categoria faccio confronto normale
+    blt a6, a7, compare_chars_return
+    compare_chars_switch:
+    mv t0, a6
+    mv a6, a7
+    mv a7, t0
+    compare_chars_return:
+    jr ra
+ 
+    
+#a5 = carattere, restituisce in a5 la categoria:
+#0 = extra, 1 = numero, 2 = minuscola, 3 = maiuscola
+get_category:
+    mv t0 a5
+    #extra di default
+    li a5, 0
+    #se 48 <= c <= 57 allora numero
+    li t3, 48
+    li t2, 57
+    blt t0, t3, get_category_return
+    bgt t0, t2, get_category_check_lowercase
+    li a5, 1
+    jr ra
+    get_category_check_lowercase:
+    li t3, 97
+    li t2, 122
+    blt t0, t3, get_category_check_uppercase
+    bgt t0, t2, get_category_return
+    li a5, 2
+    jr ra
+    get_category_check_uppercase:
+    li t3, 65
+    li t2, 90
+    blt t0, t3, get_category_return
+    bgt t0, t2, get_category_return
+    li a5, 3
+    get_category_return:
+    jr ra
+
+    
+#a0 indizzo base, a1 left, a2 right
+merge_sort:
+    #se left>=right allora return
+    bge a1 a2 merge_sort_return
+    #t0(mid) = (left+right)/2
+    add t0 a1 a2
+    srai t0 t0 1
+    #salvo ra, left, right, mid
+    lw t1 0(sp)
+    sw ra 0(sp)
+    sw a1 4(sp)
+    sw a2 8(sp)
+    sw t0 12(sp)
+    addi t1 t1 -16
+    sw t1 0(sp)
+    #chiamo merge_sort(a0, left, mid)
+    mv a2 t0
+    jal merge_sort
+    #chiamo merge_sor(a0, mid+1, right)
+    lw t1 0(sp)
+    addi t1 t1 16
+    lw a1 12(t1)
+    addi a1 a1 1
+    lw a2 8(sp)
+    jal merge_sort
+    #chiamo la funzione merge
+    lw t1 0(sp)
+    addi t1 t1 16
+    lw a1 4(t1)
+    lw a2 8(t1)
+    lw a3 12(t1)
+    la a4 buffer2
+    jal merge
+    #ricarico ra
+    lw t1 0(sp)
+    addi t1 t1 16
+    lw ra 0(t1)
+    sw t1 0(sp)
+    merge_sort_return:
+    jr ra
+    
+#a0 indirizzo base, a1 left, a2 right, a3 mid, a4 indirizzo base appoggio
+merge:
+    #t0 = left+base, t1 = mid+1+base, t2 = right+base
+    add t0 a1 a0
+    add t1 a3 a0
+    addi t1 t1 1
+    mv t3 t1
+    add t2 a2 a0
+    #t4 funge da i
+    mv t4 a4
+    merge_loop:
+    #salvo tutte i registri per le funzioni di confronto gli modificano
+    lw t5 0(sp)
+    sw a0 0(t5)
+    sw a1 4(t5)
+    sw a2 8(t5)
+    sw a3 12(t5)
+    sw a4 16(t5)
+    sw t0 20(t5)
+    sw t1 24(t5)
+    sw t2 28(t5)
+    sw t3 32(t5)
+    sw t4 36(t5)
+    sw ra 40(t5)
+    addi t5 t5 -44
+    sw t5 0(sp)
+    
+    merge_back_to_loop:
+    #ricarico tutti i registri
+    lw t5 0(sp)
+    addi t5 t5 44
+    lw a0 0(t5)
+    lw a1 4(t5)
+    lw a2 8(t5)
+    lw a3 12(t5)
+    lw a4 16(t5)
+    lw t0 20(t5)
+    lw t1 24(t5)
+    lw t2 28(t5)
+    lw t3 32(t5)
+    lw t4 36(t5)
+    lw ra 40(t5)
+    sw t5 0(sp)
+    j merge_loop
+    merge_add_from_left:
+    #carico byte e aumento t0 (left)
+    lbu t5 0(t0)
+    addi t0 t0 1
+    #salvo byte in buffer 2
+    sb t5 0(t4)
+    addi t4 t4 1
+    j merge_loop
+    merge_add_from_right:
+    #carico byte
+    lbu t5 0(t1)
+    addi t1 t1 1
+    #salvo byte
+    sb t5 0(t4)
+    addi t4 t4 1
+    j merge_loop
+    merge_copy_back_to_buffer1:
+    
+    merge_return:
+    jr ra
+    
+#buffer1 viene riempito in ordine con i dati della linked list
+to_array:
+    lw t0 0(s0)
+    la t1 buffer1
+    to_array_loop:
+    #se t0 == null allora return
+    beq zero t0 to_array_return
+    #carico byte e puntatore al prossio nodo
+    lbu t2 0(t0)
+    lw t0 1(t0)
+    sb t2 0(t1)
+    addi t1 t1 1
+    j to_array_loop
+    to_array_return:
+    #salvo lunghezza array e return
+    la t2 buffer1
+    sub t1 t1 t2
+    la t2 lunghezza_buffer1
+    sb t1 0(t2)
+    jr ra
+
+clear_buffer1:
+    la t0 lunghezza_buffer1
+    sw zero 0(t0)
+    la t0 buffer1
+    addi t1 t0 100
+    bge t0 t1 clear_buffer1_return
+    sw zero 0(t0)
+    addi t0 t0 4
+    clear_buffer1_return:
+    jr ra
+
+clear_buffer2:
+    la t0 lunghezza_buffer2
+    sw zero 0(t0)
+    la t0 buffer2
+    addi t1 t0 100
+    bge t0 t1 clear_buffer2_return
+    sw zero 0(t0)
+    addi t0 t0 4
+    clear_buffer2_return:
+    jr ra
 
 #a0 = byte da eliminare
-del:
+DEL:
     #t0 = nodo padre, t1 = nodo attuale
     li t0 0
     lw t1 0(s0)
@@ -101,7 +367,7 @@ del:
     del_return:
     jr ra
     
-rev:
+REV:
     #return se lista è vuota
     lw t0 0(s0)
     beq zero t0 rev_return
@@ -139,7 +405,7 @@ rev:
 
 #aggiunta in coda
 #a0 byte da aggiungere
-add:
+ADD:
     #carico indirizzo puntato da free_space
     lw t1 free_space
     #if tail == null nessun nodo precedente 
@@ -168,7 +434,7 @@ add:
     
 #a1= nodo da qui iniziare a stampare
 #se a1 = null (lista vuota) stampa ø
-print:
+PRINT:
     beq zero a1 print_null
     print_ricorsive:
     #se a1 == null return
@@ -214,6 +480,9 @@ find_free_space:
     addi t1 t1 -5
     sw t1 0(t0)
     jr ra
+
+#trova spazio per un array di 100byte scandagliando ogni 100byte
+find_free_space_array:
     
 #spampa /n per differenziare da una stampa all'altra
 new_line:
