@@ -26,24 +26,80 @@ free_space: .word 0x0
     li a0 67
     jal add
     jal find_free_space
-    li a0 68
+    li a0 67
     jal add
     jal find_free_space
     li a0 69
     jal add
     jal find_free_space
-    
+    li a0 69
+    jal add
+    jal find_free_space
+    li a0 69
+    jal add
+    jal find_free_space
+    li a0 72
+    jal add
+    jal find_free_space
+ 
     lw a1 0(s0)
     jal print
+    
+    li a0 65
+    jal del
+    li a0 69
+    jal del
+    jal del
+    
     jal rev
-    lw a1 0(s0)
     jal new_line
+    lw a1 0(s0)
     jal print
     #exit
     li a7 10
     ecall
     
-    
+
+#a0 = byte da eliminare
+del:
+    #t0 = nodo padre, t1 = nodo attuale
+    li t0 0
+    lw t1 0(s0)
+    del_loop:
+    #puntatore al nodo attuale == null allora return
+    beq zero t1 del_return
+    lbu t2 0(t1)
+    bne t2 a0 del_continue
+    #lunghezza lista += -1
+    lw t4 8(s11)
+    addi t4 t4 -1
+    sw t4 8(s11)
+    beq zero t0 del_del_head
+    #nodo puntato dal padre = nodo puntato da attuale
+    lw t3 1(t1)
+    sw t3 1(t0)
+    j del_clear_mem_tail_check
+    del_del_head:
+    #head = prossimo nodo
+    lw t3 1(t1)
+    sw t3 0(s0)
+    del_clear_mem_tail_check:
+    #azzero i 5 byte occupati dal nodo, cosi che vengano riusati
+    sw zero 0(t1)
+    sw zero 1(t1)
+    #attuale = prossimo
+    mv t1 t3
+    #se t1 è null bisogna aggiornare tail e fine funzione
+    bne zero t1 del_loop
+    sw t0 0(s11)
+    j del_return
+    del_continue:
+    # puntatore al padre = attuale, puntatore attuale = prossimo
+    mv t0 t1
+    lw t1 1(t1)
+    j del_loop
+    del_return:
+    jr ra
     
 rev:
     #return se lista è vuota
@@ -56,14 +112,12 @@ rev:
     lw t4 0(s11)
     sw t1 0(s11)
     rev_stackup_loop:
-    #if attuale puntatore == null fine loop
-    beq zero t1 rev_stackup_loopend
+    #if attuale puntatore == null fine loopyy
     #salvo attuale puntatore e carico quello del prossimo nodo
     sw t1 0(t2)
     addi t2 t2 -4
     lw t1 1(t1)
-    j rev_stackup_loop
-    rev_stackup_loopend:
+    bne zero t1 rev_stackup_loop
     #carico head (e lo aggiorno) e ultimo puntatore
     sw t4 0(s0)
     lw t1 1(t0)
@@ -112,8 +166,11 @@ add:
     add_return:
     jr ra
     
-#a1= puntatore a head
+#a1= nodo da qui iniziare a stampare
+#se a1 = null (lista vuota) stampa ø
 print:
+    beq zero a1 print_null
+    print_ricorsive:
     #se a1 == null return
     beq zero a1 print_return
     #salvo ra in sp e aggiorno quest'ultimo
@@ -127,7 +184,7 @@ print:
     #stampo e chiamo print sul prossimo nodo
     li a7 11
     ecall
-    jal print
+    jal print_ricorsive
     #carico ra da sp e aggiorno quest'ultimo
     lw t0 0(sp)
     addi t0 t0 4
@@ -135,6 +192,11 @@ print:
     sw t0 0(sp)
     print_return:
     jr ra
+    print_null:
+    li a0 248
+    li a7 11
+    ecall
+    j rev_return
     
 #viene aggiornata la word free_space con puntatore alla
 #alla prima cella di prime 5 celle che hanno solo 0x0
@@ -157,5 +219,10 @@ find_free_space:
 new_line:
     li a0 10
     li a7 11
+    ecall
+    jr ra
+print_length:
+    lw a0 8(s11)
+    li a7 1
     ecall
     jr ra
